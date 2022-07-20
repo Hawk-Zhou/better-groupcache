@@ -1,6 +1,6 @@
 # better-groupcache
 
-## What is this?
+## What is this
 
 This is my implementation of [geecache](https://geektutu.com/post/geecache.html), a educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). I am inventing the wheel again to practice go programming. 
 
