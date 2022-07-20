@@ -2,8 +2,8 @@ package consistentHash
 
 import (
 	"container/list"
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -27,6 +27,10 @@ func riggedHash(salted []byte) uint32 {
 		println(expected_strings.Front().Value.(string))
 		panic("got unexpected name to hash")
 	}
+	return determined_hash.Remove(determined_hash.Front()).(uint32)
+}
+
+func riggedHashNoExpectation(salted []byte) uint32 {
 	return determined_hash.Remove(determined_hash.Front()).(uint32)
 }
 
@@ -143,11 +147,14 @@ func TestAbnormalVNodeOps(t *testing.T) {
 	ch.getNearestNode(114)
 }
 
-func TestAddNote(t *testing.T) {
+func TestNodeOps(t *testing.T) {
 	// this focus on normal logic, another test tries the abnormal
 	ch := NewCHash(nil)
+	removeLater := make([]string, 0, 100)
 	for i := 0; i < 100; i++ {
-		ch.AddNode(fmt.Sprint(i) + "Node")
+		name := fmt.Sprint(i) + "Node"
+		ch.AddNode(name)
+		removeLater = append(removeLater, name)
 	}
 	mapNodeCount := make(map[string]int)
 	querySize := 100000 //
@@ -158,11 +165,62 @@ func TestAddNote(t *testing.T) {
 	}
 	for k := range mapNodeCount {
 		// we have 100 nodes, ideally each node handles 1% of all queries
-		// if a node is handling more than > 5.14%
+		// if a node is handling more than > 5.14% or < 0.1%
 		// that's super SUS
-		if float64(mapNodeCount[k])/float64(querySize) > 0.0514 {
-			t.Error("Detected very unbalanced hash, a node is handling > 10% of all queries")
+		if per := float64(mapNodeCount[k]) / float64(querySize); per < 0.0001 ||
+			per > 0.0514 {
+			t.Error("Detected very unbalanced hash")
 		}
 	}
 	fmt.Println(mapNodeCount)
+
+	// RemoveNode
+	rand.Shuffle(len(removeLater), func(i, j int) {
+		removeLater[i], removeLater[j] = removeLater[j], removeLater[i]
+	})
+
+	expectedLen := len(removeLater)
+	for _, name := range removeLater {
+		expectedLen--
+		err := ch.RemoveNode(name)
+		if err != nil || ch.Len() != expectedLen {
+			t.Error("unexpected error when removing nodes")
+		}
+	}
+}
+
+func TestAbnormalNodeOps(t *testing.T) {
+	ch := NewCHash(riggedHashNoExpectation)
+	for i := 0; i < 11; i++ {
+		for j := 0; j < ch.vtFactor; j++ {
+			determined_hash.PushBack(uint32(j))
+		}
+	}
+	ch.AddNode("this hashed to 0 1 2 3")
+	err := ch.AddNode("this also hashed to 0 1 2 3")
+	if err == nil || err.Error() != "too many vNode number collisions after retries" {
+		t.Error("it should exceed max tries to find a new salt")
+	}
+	// if this is not rejected by checking map[name]salt
+	// this will hash and hence remove from empty list -> panic
+	ch.AddNode("this hashed to 0 1 2 3")
+
+	if err := ch.RemoveNode("this does not exist"); err == nil {
+		t.Error("this should prompt removal of nonexistent node")
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Error("removeNode leads to inconsistent state should panic")
+		}
+	}()
+
+	// before removing a node
+	// remove one of it's vNode XD
+	for j := 0; j < ch.vtFactor; j++ {
+		determined_hash.PushBack(uint32(j))
+	}
+	ch.deleteVNode(3) // remains 0 1 2
+	ch.RemoveNode("this hashed to 0 1 2 3")
+
 }

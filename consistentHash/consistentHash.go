@@ -183,3 +183,7 @@ changeSalt:
 func (ch *cHash) FindNode(query string) (name string) {
 	return ch.getNearestNode(ch.hasher([]byte(query)))
 }
+
+func (ch *cHash) Len() int {
+	return ch.vNodes.Len() / ch.vtFactor
+}
