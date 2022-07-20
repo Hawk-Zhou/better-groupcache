@@ -49,7 +49,7 @@ If we begin to delete nodes, such collision will lead to inconsistency and under
 
 The solution I proposed is very primitive and brutal. We append a random salt value of one byte to the name being hashed and store it (later I realized that this is a bad idea). If there's still a collision, another salt is rolled. This process is allowed to try 10 salts before it gives up. I did some bad calculation. Assuming that a million nodes have been replicated at a factor of five and the possibility of hashing to any value is equal, the possibility of having at least one collision in the five replicas can be calculated as follows.  
 $\text{P} = 1-\text{P(No collision)} = 1-(\frac{2^{32}-1,000,000}{2^{32}})^5=0.9988$  
-We are rolling this ten times in a row. So this shouldn't lead to any problem.
+We are rolling this ten times in a row so this shouldn't lead to any problem.
 
 **Limitation**
 
