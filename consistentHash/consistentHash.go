@@ -118,13 +118,23 @@ func (ch *cHash) getNearestNode(queryHash uint32) (name string) {
 	return name
 }
 
-// this finds all virtual node under the name
-func (ch *cHash) findAllMappedNodes(name string) {
-	salt := ch.NameToSalt[name]
-	vNodes := ch.groupHash(name,salt)
-	for _, h := vNodes {
-		
+// this deletes all virtual node under the name
+// along with other bookkeeping info
+func (ch *cHash) RemoveNode(name string) error {
+	salt, ok := ch.NameToSalt[name]
+	if !ok {
+		return errors.New("node name doesn't exist")
 	}
+	vNodes := ch.groupHash(name, salt)
+	var err error = nil
+	for _, h := range vNodes {
+		err = ch.deleteVNode(h)
+		if err != nil {
+			log.Panicf("fatal error at RemoveNode: +%v", err.Error())
+		}
+	}
+	delete(ch.NameToSalt, name)
+	return nil
 }
 
 func (ch *cHash) ifDuplicatedHashes(hashes []uint32) bool {
