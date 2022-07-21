@@ -23,10 +23,9 @@ func NewHTTPPool(port int) *HTTPPool {
 
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	r.Body.Close()
 	if !strings.HasPrefix(path, p.basePath) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("bad Pathname\n"))
+		w.Write([]byte(fmt.Sprintf("bad Pathname: %v \n", path)))
 		return
 	}
 	params := strings.SplitN(path[len(p.basePath):], "/", 3)
@@ -39,6 +38,7 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("group name / key should be not null\n"))
 		return
 	}
+	// log.Printf("[HTTPPool/ServeHttp] trying to access %s:%s", params[0], params[1])
 	g, ok := GetGroup(params[0])
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
@@ -55,15 +55,13 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(ret.Get())
 }
 
-func (p *HTTPPool) RunServer() (*http.Server, error) {
+func (p *HTTPPool) NewServer() *http.Server {
 	server := newHttpServer(p)
-	err := server.ListenAndServe()
-	return server, err
+	return server
 }
 
-// As no timeOut (using default)
-// is very dangerous as per the book.
-// It's necessary to provide one
+// newHttpServer returns a http.Server that handles queries
+// run Server.ListenAndServe in a goroutine, or it blocks
 func newHttpServer(handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:         "0.0.0.0:8001",
@@ -73,23 +71,3 @@ func newHttpServer(handler http.Handler) *http.Server {
 		Handler:      handler,
 	}
 }
-
-// func main() {
-// 	_ = NewGroup("g1", 10, GetterFunc(func(key string) ([]byte, error) { return []byte(key), nil }))
-// 	p := NewHTTPPool(8001)
-// 	_, err := p.RunServer()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	//mux := http.NewServeMux()
-// 	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-// 	// 	r.Body.Close()
-// 	// 	log.Println(r.URL.Path)
-// 	// 	w.WriteHeader(200)
-// 	// 	w.Write([]byte("ACK\n"))
-// 	// })
-
-// 	// server := NewHttpServer(mux)
-// 	// err := server.ListenAndServe()
-
-// }
