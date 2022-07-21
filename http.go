@@ -1,17 +1,59 @@
 package geecache
 
 import (
+	"errors"
 	"fmt"
+	"geecache/consistentHash"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
 const defaultBasePath = "/geecache/"
 
+// sharedClient is http.Client that has timeout set properly
+var sharedClient = &http.Client{
+	Timeout: time.Millisecond * 200,
+}
+
+type HTTPGetter struct {
+	baseURL string // "http://0.0.0.0:8000/geecache/"
+}
+
+func (hg *HTTPGetter) Get(group string, key string) ([]byte, error) {
+	url := fmt.Sprintf(hg.baseURL+"%v/%v", group, key)
+
+	resp, err := sharedClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	// otherwise memory will leak
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		if err != nil {
+			return nil, fmt.Errorf("another error happened when handling statusCode(%v) from response:%w",
+				resp.StatusCode,
+				err)
+		}
+		return nil, errors.New(resp.Status + ": " + string(body))
+	}
+
+	return body, nil
+}
+
+// trick to validate a struct implements an interface properly
+var _ PeerGetter = (*HTTPGetter)(nil)
+
 type HTTPPool struct {
-	host     string // "ip:port"
-	basePath string // "/pathname/"
+	host        string // "ip:port"
+	basePath    string // "/pathname/"
+	mu          sync.Mutex
+	peers       *consistentHash.CHash
+	httpGetters map[string]*HTTPGetter
 }
 
 func NewHTTPPool(port int) *HTTPPool {
