@@ -55,3 +55,9 @@ We are rolling this ten times in a row so this shouldn't lead to any problem.
 
 Roll the dice is a bad behavior given that we can just try from 0 to 255 in a ordered manner. I was kind of confused by the idea of "salt" and chose to generate it with randomly. Luckily this can be corrected, the maximum allowed retries for a new salt value can be configured and the salt comes from a function, which can also be easily replaced by a for loop.
 
+## Lessons Learnt
+1. It is helpful for testing to call a callback function when a black box system is conducting a operation that happens occasionally (like evicting cache entires).
+2. Unit tests back refactoring and serve as regression tests.
+3. Don't fiddle with coroutines when testing, especially when testing something that also involves concurrency.
+	For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.
+4. `var _ interfaceT = (* concreteT)(nil)` validates if a concrete type implements an interface by converting a `nil pointer` to `pointer to interfaceT`.
