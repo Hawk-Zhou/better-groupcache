@@ -1,22 +1,24 @@
 package geecache
 
 import (
-	"fmt"
+	"context"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-var client = &http.Client{
+var testingClient = &http.Client{
 	Timeout: time.Millisecond * 1000,
 }
 
 const addr = "http://0.0.0.0:8001/geecache"
 
 func testGet(url string) (bodyText string, code int, err error) {
-	rep, err := client.Get(url)
+	rep, err := testingClient.Get(url)
 	// log.Println("requesting:", url)
 	if err != nil {
 		return "", 0, err
@@ -46,8 +48,13 @@ func TestServer(t *testing.T) {
 
 	p := NewHTTPPool(8001)
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	server := p.NewServer()
-	go server.ListenAndServe()
+	go func() {
+		defer wg.Done()
+		server.ListenAndServe()
+	}()
 	time.Sleep(time.Millisecond * 50)
 
 	data := []struct {
@@ -67,8 +74,8 @@ func TestServer(t *testing.T) {
 		// size = maxBytes, evict asdf
 		{"/g1/12345", true, 2},
 		{"/g1/asdf", true, 3},
-		// can't write, exceed maxBytes
-		{"/g1/123456", false, 3},
+		// callback is called, but result can't be cached, exceed maxBytes
+		{"/g1/123456", false, 4},
 	}
 
 	for _, d := range data {
@@ -86,7 +93,7 @@ func TestServer(t *testing.T) {
 			}
 
 			if d.expectCount != callbackCount {
-				fmt.Printf("expecting callback count %d, got %d", callbackCount, d.expectCount)
+				t.Errorf("expecting callback count %d, got %d", d.expectCount, callbackCount)
 			}
 
 			if !d.shouldSuccess {
@@ -103,6 +110,71 @@ func TestServer(t *testing.T) {
 				}
 			}
 
+		})
+	}
+	if err := server.Shutdown(context.TODO()); err != nil {
+		t.Error("Fail to shutdown sever")
+	}
+
+	wg.Wait()
+}
+
+func TestHTTPGetter_Get(t *testing.T) {
+
+	p := NewHTTPPool(8001)
+	getter := &HTTPGetter{
+		baseURL: "http://" + p.host + p.basePath,
+	}
+	if getter.baseURL != "http://0.0.0.0:8001/geecache/" {
+		t.Error("url is wrong:", getter.baseURL)
+	}
+
+	groupName := "test_httpGetter"
+	callbackFlag := false
+
+	NewGroup("test_httpGetter", 10, GetterFunc(func(key string) ([]byte, error) {
+		callbackFlag = true
+		return []byte(key), nil
+	}))
+
+	server := p.NewServer()
+	go server.ListenAndServe()
+	time.Sleep(time.Millisecond * 50)
+
+	for key := range groups {
+		println(key)
+	}
+
+	data := []struct {
+		group        string
+		key          string
+		wantErr      bool
+		wantCallback bool
+	}{
+		{"notexist", "123", true, false},
+		{groupName, "1234", false, true},
+		{groupName, "1234", false, false},
+		{groupName, "19191", false, true},
+		{groupName, "114", false, true},
+		{groupName, "1145141919", true, true},
+	}
+	for _, d := range data {
+		t.Run(d.key, func(t *testing.T) {
+			defer func() {
+				callbackFlag = false
+			}()
+			got, err := getter.Get(d.group, d.key)
+			if (err != nil) != d.wantErr {
+				t.Errorf("HTTPGetter.Get() error = %v, wantErr %v", err, d.wantErr)
+				return
+			}
+			if d.wantCallback != callbackFlag {
+				t.Errorf("HTTPGetter.Get() callbackFlag = %v, want %v", callbackFlag, d.wantCallback)
+				return
+			}
+			if !d.wantErr && !reflect.DeepEqual(got, []byte(d.key)) {
+				t.Errorf("HTTPGetter.Get() = %v, want %v", string(got), d.key)
+			}
 		})
 	}
 }
