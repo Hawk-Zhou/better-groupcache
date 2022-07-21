@@ -70,10 +70,10 @@ func (g *Group) Get(key string) (ByteView, error) {
 
 	bv, ok := g.mainCache.get(key)
 	if !ok {
-		log.Println("Group.Get] cache miss")
+		log.Println("[Group.Get] cache miss")
 		ret, err := g.load(key)
 		if err != nil {
-			log.Println("Group.Get] can't get key after miss:", err.Error())
+			log.Println("[Group.Get] can't get key after miss:", err.Error())
 		}
 		return ret, err
 	}
