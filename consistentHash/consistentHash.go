@@ -17,7 +17,7 @@ import (
 
 const (
 	defaultSaltLen  = 1 //bytes
-	defaultVtFactor = 4
+	defaultVtFactor = 50
 )
 
 type vNode struct {
@@ -29,7 +29,7 @@ func (vn vNode) Less(than btree.Item) bool {
 	return vn.hash < than.(vNode).hash
 }
 
-type cHash struct {
+type CHash struct {
 	// when hashing, salt is added to avoid possible collision
 	hasher     Hasher
 	NameToSalt map[string][]byte
@@ -58,11 +58,11 @@ func getSalt(size int) ([]byte, error) {
 	return ret, err
 }
 
-func NewCHash(hasher Hasher) *cHash {
+func NewCHash(hasher Hasher) *CHash {
 	if hasher == nil {
 		hasher = crc32.ChecksumIEEE
 	}
-	return &cHash{
+	return &CHash{
 		hasher:     hasher,
 		vtFactor:   defaultVtFactor,
 		NameToSalt: make(map[string][]byte),
@@ -72,7 +72,7 @@ func NewCHash(hasher Hasher) *cHash {
 }
 
 // groupHash hashes a name to a set of vNodes with salt
-func (ch *cHash) groupHash(name string, salt []byte) []uint32 {
+func (ch *CHash) groupHash(name string, salt []byte) []uint32 {
 	ret := make([]uint32, 0, ch.vtFactor)
 	for v := 0; v < ch.vtFactor; v++ {
 		suffixedName := name + fmt.Sprint(v)
@@ -84,7 +84,7 @@ func (ch *cHash) groupHash(name string, salt []byte) []uint32 {
 	return ret
 }
 
-func (ch *cHash) insertVNode(hash uint32, salt []byte, name string) error {
+func (ch *CHash) insertVNode(hash uint32, salt []byte, name string) error {
 	replaced := ch.vNodes.ReplaceOrInsert(vNode{hash: hash, name: name})
 	if replaced != nil {
 		return errors.New("shouldn't be replacing existing vNode")
@@ -92,7 +92,7 @@ func (ch *cHash) insertVNode(hash uint32, salt []byte, name string) error {
 	return nil
 }
 
-func (ch *cHash) deleteVNode(hash uint32) error {
+func (ch *CHash) deleteVNode(hash uint32) error {
 	deleted := ch.vNodes.Delete(vNode{hash: hash})
 	if deleted == nil {
 		return errors.New("shouldn't be deleting non-existent vNode")
@@ -100,7 +100,7 @@ func (ch *cHash) deleteVNode(hash uint32) error {
 	return nil
 }
 
-func (ch *cHash) getNearestNode(queryHash uint32) (name string) {
+func (ch *CHash) getNearestNode(queryHash uint32) (name string) {
 	if ch.vNodes.Len() == 0 {
 		panic("No vNode exists!")
 	}
@@ -120,7 +120,7 @@ func (ch *cHash) getNearestNode(queryHash uint32) (name string) {
 
 // this deletes all virtual node under the name
 // along with other bookkeeping info
-func (ch *cHash) RemoveNode(name string) error {
+func (ch *CHash) RemoveNode(name string) error {
 	salt, ok := ch.NameToSalt[name]
 	if !ok {
 		return errors.New("node name doesn't exist")
@@ -137,7 +137,7 @@ func (ch *cHash) RemoveNode(name string) error {
 	return nil
 }
 
-func (ch *cHash) ifDuplicatedHashes(hashes []uint32) bool {
+func (ch *CHash) ifDuplicatedHashes(hashes []uint32) bool {
 	for _, u := range hashes {
 		got := ch.vNodes.Get(vNode{hash: uint32(u)})
 		if got != nil {
@@ -147,7 +147,7 @@ func (ch *cHash) ifDuplicatedHashes(hashes []uint32) bool {
 	return false
 }
 
-func (ch *cHash) AddNode(name string) error {
+func (ch *CHash) AddNode(name string) error {
 	if _, ok := ch.NameToSalt[name]; ok {
 		return errors.New("the node already exists")
 	}
@@ -180,10 +180,10 @@ changeSalt:
 	return errors.New("too many vNode number collisions after retries")
 }
 
-func (ch *cHash) FindNode(query string) (name string) {
+func (ch *CHash) FindNode(query string) (name string) {
 	return ch.getNearestNode(ch.hasher([]byte(query)))
 }
 
-func (ch *cHash) Len() int {
+func (ch *CHash) Len() int {
 	return ch.vNodes.Len() / ch.vtFactor
 }
