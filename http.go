@@ -58,8 +58,10 @@ type HTTPPool struct {
 
 func NewHTTPPool(port int) *HTTPPool {
 	return &HTTPPool{
-		host:     "0.0.0.0:" + fmt.Sprint(port),
-		basePath: defaultBasePath,
+		host:        "0.0.0.0:" + fmt.Sprint(port),
+		basePath:    defaultBasePath,
+		peers:       consistentHash.NewCHash(nil),
+		httpGetters: make(map[string]*HTTPGetter),
 	}
 }
 
@@ -98,18 +100,83 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *HTTPPool) NewServer() *http.Server {
-	server := newHttpServer(p)
+	server := newHttpServer(p.host, p)
 	return server
 }
 
 // newHttpServer returns a http.Server that handles queries
 // run Server.ListenAndServe in a goroutine, or it blocks
-func newHttpServer(handler http.Handler) *http.Server {
+func newHttpServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:         "0.0.0.0:8001",
+		Addr:         addr,
 		ReadTimeout:  20 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		WriteTimeout: 20 * time.Second,
 		Handler:      handler,
 	}
+}
+
+// AddPeers set peers of this format:
+//  "http://0.0.0.0:8000/geecache/"
+// * also register itself automatically
+// * idempotent operation
+func (p *HTTPPool) AddPeers(peers ...string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	peers = append(peers, "http://"+p.host+p.basePath)
+
+	for _, peer := range peers {
+		if _, ok := p.peers.NameToSalt[peer]; ok {
+			continue
+		}
+
+		err := p.peers.AddNode(peer)
+
+		if err != nil {
+			return fmt.Errorf("can't add the peer %s: %w", peer, err)
+		}
+
+		p.httpGetters[peer] = &HTTPGetter{
+			baseURL: peer,
+		}
+	}
+
+	return nil
+}
+
+// RemovePeers remove a set of peers:
+// format:"http://0.0.0.0:8000/geecache/"
+// * Not idempotent
+// * Errs if not exist
+func (p *HTTPPool) RemovePeers(peers ...string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, peer := range peers {
+		err := p.peers.RemoveNode(peer)
+
+		if err != nil {
+			return fmt.Errorf("can't remove peers: +%w", err)
+		}
+
+		delete(p.httpGetters, peer)
+	}
+
+	return nil
+}
+
+// PickPeer return a peer if peer is valid (not "")
+// and is not the caller itself.
+// * Return false is no peer exists.
+func (p *HTTPPool) PickPeer(query string) (PeerGetter, bool) {
+
+	peer := p.peers.FindNode(query)
+
+	if "http://"+p.host+p.basePath == peer {
+		return nil, false
+	}
+
+	pGetter, valid := p.httpGetters[peer]
+	return pGetter, valid
 }
