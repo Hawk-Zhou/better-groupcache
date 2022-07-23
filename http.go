@@ -180,3 +180,5 @@ func (p *HTTPPool) PickPeer(query string) (PeerGetter, bool) {
 	pGetter, valid := p.httpGetters[peer]
 	return pGetter, valid
 }
+
+var _ PeerPicker = (*HTTPPool)(nil)
