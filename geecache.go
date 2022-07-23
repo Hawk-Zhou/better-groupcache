@@ -3,6 +3,7 @@ package geecache
 import (
 	"errors"
 	"log"
+	"math/rand"
 	"sync"
 )
 
@@ -32,8 +33,10 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 
 type Group struct {
 	name      string
-	mainCache cache
+	mainCache cache // authoritative
+	hotCache  cache // not authoritative but hot
 	getter    Getter
+	peers     PeerPicker
 }
 
 var (
@@ -50,6 +53,7 @@ func NewGroup(name string, maxBytes int, getter Getter) *Group {
 		// which makes filling fields here difficult
 		mainCache: cache{maxBytes: maxBytes},
 		getter:    getter,
+		hotCache:  cache{maxBytes: maxBytes},
 	}
 	groups[name] = g
 	return g
@@ -82,7 +86,21 @@ func (g *Group) Get(key string) (ByteView, error) {
 	return bv, nil
 }
 
+// load is called when the key can't be found in local cache
+// It will ask its peers for that if not authoritative
+// Otherwise it will call getter
 func (g *Group) load(key string) (value ByteView, err error) {
+
+	if pGetter, ok := g.peers.PickPeer(key); ok {
+		// a peer is authoritative
+		log.Println("[Group.load] Getting from peers")
+		ret, err := g.getFromPeers(pGetter, key)
+		if err != nil {
+			log.Printf("[Group.load] Failed to get from peers: %v", err)
+		}
+		return ret, err
+	}
+
 	return g.getLocally(key)
 }
 
@@ -98,4 +116,41 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 
 func (g *Group) populateCache(key string, value ByteView) error {
 	return g.mainCache.lru.Add(key, value)
+}
+
+func (g *Group) RegisterPeers(peers PeerPicker) {
+	if g.peers != nil {
+		panic("peers of a group initialized more than once")
+	}
+	g.peers = peers
+	g.AddPeers()
+}
+
+func (g *Group) AddPeers(peers ...string) {
+	switch x := g.peers.(type) {
+	case (*HTTPPool):
+		x.AddPeers(peers...)
+	default:
+		panic("unknown type encountered when adding peers")
+	}
+}
+
+// getFromPeers should be called if known caller is not authoritative
+// shouldn't validate whether authoritative here
+func (g *Group) getFromPeers(pGetter PeerGetter, key string) (ByteView, error) {
+	// if not ok means g itself is authoritative
+
+	b, err := pGetter.Get(g.name, key)
+
+	if err != nil {
+		return ByteView{}, err
+	}
+
+	ret := ByteView{b: b}
+
+	if rand.Intn(10) == 0 {
+		g.hotCache.add(key, ret)
+	}
+
+	return ret, nil
 }
