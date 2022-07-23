@@ -180,6 +180,7 @@ changeSalt:
 	return errors.New("too many vNode number collisions after retries")
 }
 
+// FindNode matches a query to a node
 func (ch *CHash) FindNode(query string) (name string) {
 	return ch.getNearestNode(ch.hasher([]byte(query)))
 }
