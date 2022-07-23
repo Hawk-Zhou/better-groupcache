@@ -37,6 +37,7 @@ func TestGroupWR(t *testing.T) {
 	getter := getGenerator()
 
 	g := NewGroup("G1", len("hello"+"world"), getter)
+	g.RegisterPeers(NewHTTPPool(19623))
 
 	testdata := []struct {
 		name          string

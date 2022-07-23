@@ -42,12 +42,13 @@ func TestServer(t *testing.T) {
 
 	callbackCount := 0
 
-	NewGroup("g1", 10, GetterFunc(func(key string) ([]byte, error) {
+	g := NewGroup("g1", 10, GetterFunc(func(key string) ([]byte, error) {
 		callbackCount++
 		return []byte(key), nil
 	}))
 
 	p := NewHTTPPool(8001)
+	g.RegisterPeers(p)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -134,10 +135,11 @@ func TestHTTPGetter_Get(t *testing.T) {
 	groupName := "test_httpGetter"
 	callbackFlag := false
 
-	NewGroup("test_httpGetter", 10, GetterFunc(func(key string) ([]byte, error) {
+	g := NewGroup("test_httpGetter", 10, GetterFunc(func(key string) ([]byte, error) {
 		callbackFlag = true
 		return []byte(key), nil
 	}))
+	g.RegisterPeers(p)
 
 	server := p.NewServer()
 	go server.ListenAndServe()
@@ -183,13 +185,11 @@ func TestHTTPGetter_Get(t *testing.T) {
 
 func TestHTTPPool_PeerOp(t *testing.T) {
 	count := 0
-	_ = NewGroup("peerOp", 10, GetterFunc(func(key string) ([]byte, error) {
-		count++
-		return []byte(key), nil
-	}))
+	g := NewGroup("peerOp", 10, nil)
 	localPool := NewHTTPPool(8001)
+	g.RegisterPeers(localPool)
 
-	localPool.AddPeers()
+	localPool.AddPeers() // actually already implicitly added itself when registering peers
 	_, ok := localPool.PickPeer("114")
 	if ok {
 		t.Error("should omit itself")
@@ -206,6 +206,16 @@ func TestHTTPPool_PeerOp(t *testing.T) {
 
 	remotePool := NewHTTPPool(8002)
 	remoteSever := remotePool.NewServer()
+	// We have to use a new group instead of use the above "peerOp"
+	// The localPool is registered to peerOp. To make sure it request from remote,
+	// itself is removed from its peers. So any query it got will be directed to remote.
+	// If remote use localPool, then the query will be given to localPool to choose a peer to answer.
+	// Boom bang, now it loops forever.
+	remoteGroup := NewGroup("remoteG", 10, GetterFunc(func(key string) ([]byte, error) {
+		count++
+		return []byte(key), nil
+	}))
+	remoteGroup.RegisterPeers(remotePool)
 	localPool.AddPeers("http://" + remotePool.host + remotePool.basePath)
 	localPool.RemovePeers("http://" + localPool.host + localPool.basePath)
 	go func() {
@@ -221,7 +231,7 @@ func TestHTTPPool_PeerOp(t *testing.T) {
 
 	pGetter, _ := localPool.PickPeer("114")
 
-	ret, err := pGetter.Get("peerOp", "114")
+	ret, err := pGetter.Get("remoteG", "114")
 
 	if !reflect.DeepEqual(ret, []byte("114")) ||
 		err != nil ||

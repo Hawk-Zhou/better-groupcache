@@ -1,3 +1,6 @@
+//go:build testrace
+// +build testrace
+
 package geecache
 
 import (
@@ -8,7 +11,7 @@ import (
 )
 
 // hope that go race detects hazard
-// test me with go test -race ./...
+// test me with go test -race ./.../
 func TestParallelRead(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(50)
