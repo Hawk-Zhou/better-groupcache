@@ -3,6 +3,7 @@ package geecache
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"strings"
@@ -53,9 +54,10 @@ func TestServer(t *testing.T) {
 	server := p.NewServer()
 	go func() {
 		defer wg.Done()
+		log.Println("trying to init server at", server.Addr)
 		server.ListenAndServe()
 	}()
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 200)
 
 	data := []struct {
 		params        string
@@ -176,5 +178,54 @@ func TestHTTPGetter_Get(t *testing.T) {
 				t.Errorf("HTTPGetter.Get() = %v, want %v", string(got), d.key)
 			}
 		})
+	}
+}
+
+func TestHTTPPool_PeerOp(t *testing.T) {
+	count := 0
+	_ = NewGroup("peerOp", 10, GetterFunc(func(key string) ([]byte, error) {
+		count++
+		return []byte(key), nil
+	}))
+	localPool := NewHTTPPool(8001)
+
+	localPool.AddPeers()
+	_, ok := localPool.PickPeer("114")
+	if ok {
+		t.Error("should omit itself")
+	}
+	err := localPool.RemovePeers("http://" + localPool.host + localPool.basePath)
+	if err != nil {
+		t.Error("itself should exist and be removable")
+	}
+
+	err = localPool.RemovePeers("http://" + localPool.host + localPool.basePath)
+	if err == nil {
+		t.Error("itself doesn't exist and should err")
+	}
+
+	remotePool := NewHTTPPool(8002)
+	remoteSever := remotePool.NewServer()
+	localPool.AddPeers("http://" + remotePool.host + remotePool.basePath)
+	localPool.RemovePeers("http://" + localPool.host + localPool.basePath)
+	go func() {
+		log.Print("init server", remoteSever.Addr)
+		err := remoteSever.ListenAndServe()
+		if err != nil {
+			log.Printf("can't init server,err:%+v", err)
+		}
+
+	}()
+
+	time.Sleep(200 * time.Millisecond)
+
+	pGetter, _ := localPool.PickPeer("114")
+
+	ret, err := pGetter.Get("peerOp", "114")
+
+	if !reflect.DeepEqual(ret, []byte("114")) ||
+		err != nil ||
+		count != 1 {
+		t.Errorf("can't get key properly from remote, ret,err,count are %v,%v,%v", string(ret), err, count)
 	}
 }
