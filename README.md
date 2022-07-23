@@ -55,6 +55,11 @@ We are rolling this ten times in a row so this shouldn't lead to any problem.
 
 Roll the dice is a bad behavior given that we can just try from 0 to 255 in a ordered manner. I was kind of confused by the idea of "salt" and chose to generate it with randomly. Luckily this can be corrected, the maximum allowed retries for a new salt value can be configured and the salt comes from a function, which can also be easily replaced by a for loop.
 
+## My Q and My A
+
+Q: We have groups and we have consistent hash which sees keys only. Are keys from all groups distributed evenly among peers, or keys are distributed evenly *within* the group among peers.  
+A: It could do both. Every group has its own peer picker field and the peer picker interface is implemented by HTTPPool, which owns the consistent hash. Depending on the need, we can do both. If we want the former, we register the same HTTPPool to all groups. If we want the latter, each group has its own HTTPPool that is responsible for sending queries and one global HTTPPool is used to handle queries received. 
+
 ## Lessons Learnt
 1. It is helpful for testing to call a callback function when a black box system is conducting a operation that happens occasionally (like evicting cache entires).
 2. Unit tests back refactoring and serve as regression tests.
