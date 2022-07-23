@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// cache is a thread safe encapsulation of lru cache
 type cache struct {
 	// the reason why we don't use RWMutex
 	// is that even Get() will write something (to maintain lru-2)
@@ -13,6 +14,7 @@ type cache struct {
 	maxBytes int
 }
 
+// thread safe
 func (c *cache) get(key string) (value ByteView, ok bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -32,6 +34,7 @@ func (c *cache) get(key string) (value ByteView, ok bool) {
 	return ret.(ByteView), ok
 }
 
+// thread safe
 func (c *cache) add(key string, value ByteView) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

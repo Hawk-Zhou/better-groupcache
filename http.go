@@ -56,6 +56,7 @@ type HTTPPool struct {
 	httpGetters map[string]*HTTPGetter
 }
 
+// NewHTTPPool should be initialized with AddPeers
 func NewHTTPPool(port int) *HTTPPool {
 	return &HTTPPool{
 		host:        "0.0.0.0:" + fmt.Sprint(port),
@@ -166,7 +167,7 @@ func (p *HTTPPool) RemovePeers(peers ...string) error {
 	return nil
 }
 
-// PickPeer return a peer if peer is valid (not "")
+// PickPeer returns a peer if peer is valid (not "")
 // and is not the caller itself.
 // * Return false is no peer exists.
 func (p *HTTPPool) PickPeer(query string) (PeerGetter, bool) {
