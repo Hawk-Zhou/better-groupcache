@@ -14,7 +14,7 @@ type PeerGetter interface {
 // PeerPicker is already bound to a group if the portPicker is initialized
 // so it doesn't receive group name
 type PeerPicker interface {
-	PickPeer(key string) PeerGetter
+	PickPeer(key string) (PeerGetter, bool)
 }
 
 var portPicker func(group string) PeerPicker
