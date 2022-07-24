@@ -2,8 +2,11 @@ package geecache
 
 import (
 	"fmt"
+	"log"
+	"os/exec"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestGetterCallback(t *testing.T) {
@@ -64,6 +67,43 @@ func TestGroupWR(t *testing.T) {
 				t.Error("counter @ callback isn't incr'ed / bad ret val, vals:", *refCount, string(ret.Get()))
 			}
 		})
+	}
+
+}
+
+func TestGetFromRemotePool(t *testing.T) {
+	localGroup := NewGroup("getRemoteGroup", 10, nil)
+	localPool := NewHTTPPool(4970)
+	localGroup.RegisterPeers(localPool)
+
+	go func() {
+		cmd := exec.Command("./script.sh")
+		stdout, err := cmd.Output()
+
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		// Print the output
+		fmt.Println(string(stdout))
+	}()
+
+	// server can't setup in less than 800ms
+	time.Sleep(1000 * time.Millisecond)
+
+	localGroup.AddPeers("http://0.0.0.0:4971/geecache/")
+	localPool.RemovePeers("http://" + localPool.host + localPool.basePath)
+
+	log.Println("getting from remote")
+	ret, err := localGroup.Get("114")
+
+	if err != nil {
+		t.Errorf("can't get from remote: +%v", err)
+	}
+
+	if !reflect.DeepEqual(ret.b, []byte("remote")) {
+		t.Errorf("wrong ret: %v", string(ret.b))
 	}
 
 }
