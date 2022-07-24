@@ -2,6 +2,7 @@ package geecache
 
 import (
 	"errors"
+	"geecache/singleflight"
 	"log"
 	"math/rand"
 	"sync"
@@ -37,6 +38,7 @@ type Group struct {
 	hotCache  cache // not authoritative but hot
 	getter    Getter
 	peers     PeerPicker
+	sfGroup   *singleflight.Group // singleflight group
 }
 
 var (
@@ -54,6 +56,7 @@ func NewGroup(name string, maxBytes int, getter Getter) *Group {
 		mainCache: cache{maxBytes: maxBytes},
 		getter:    getter,
 		hotCache:  cache{maxBytes: maxBytes},
+		sfGroup:   &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -92,18 +95,26 @@ func (g *Group) Get(key string) (ByteView, error) {
 // Otherwise it will call getter
 func (g *Group) load(key string) (value ByteView, err error) {
 
-	if pGetter, ok := g.peers.PickPeer(key); ok {
-		// a peer is authoritative
-		log.Println("[Group.load] Getting from peers")
-		ret, err := g.getFromPeers(pGetter, key)
-		if err != nil {
-			log.Printf("[Group.load] Failed to get from peers: %v", err)
+	sfRet, err := g.sfGroup.Do(key, func() (interface{}, error) {
+		if pGetter, ok := g.peers.PickPeer(key); ok {
+			// a peer is authoritative
+			log.Println("[Group.load] Getting from peers")
+			ret, err := g.getFromPeers(pGetter, key)
+			if err != nil {
+				log.Printf("[Group.load] Failed to get from peers: %v", err)
+				return ret, err
+			}
 			return ret, err
 		}
-		return ret, err
-	}
 
-	return g.getLocally(key)
+		return g.getLocally(key)
+	})
+
+	ret := ByteView{}
+	if err == nil {
+		ret = sfRet.(ByteView)
+	}
+	return ret, err
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
@@ -117,7 +128,7 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 }
 
 func (g *Group) populateCache(key string, value ByteView) error {
-	return g.mainCache.lru.Add(key, value)
+	return g.mainCache.add(key, value)
 }
 
 func (g *Group) RegisterPeers(peers PeerPicker) {

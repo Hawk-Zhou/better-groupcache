@@ -35,11 +35,11 @@ func (c *cache) get(key string) (value ByteView, ok bool) {
 }
 
 // thread safe
-func (c *cache) add(key string, value ByteView) {
+func (c *cache) add(key string, value ByteView) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.lru == nil {
 		c.lru = lru_k.NewK(c.maxBytes, nil)
 	}
-	c.lru.Add(key, value)
+	return c.lru.Add(key, value)
 }
