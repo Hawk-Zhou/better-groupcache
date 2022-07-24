@@ -5,6 +5,7 @@ import (
 	"log"
 	"os/exec"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -64,7 +65,7 @@ func TestGroupWR(t *testing.T) {
 				t.Error("unexpected error")
 			}
 			if *refCount != d.expectedCount || !reflect.DeepEqual(ret.Get(), d.output) {
-				t.Error("counter @ callback isn't incr'ed / bad ret val, vals:", *refCount, string(ret.Get()))
+				t.Errorf("expecting incr'ed = %d / ret val = %s, got %d/%s", d.expectedCount, d.output, *refCount, string(ret.Get()))
 			}
 		})
 	}
@@ -106,4 +107,55 @@ func TestGetFromRemotePool(t *testing.T) {
 		t.Errorf("wrong ret: %v", string(ret.b))
 	}
 
+}
+
+func TestIntegrationSingleFlight(t *testing.T) {
+
+	refCount := 0
+	getGenerator := func() (ret Getter) {
+		ret = GetterFunc(func(key string) ([]byte, error) {
+			refCount++
+			time.Sleep(500 * time.Millisecond)
+			fmt.Printf("[Getter Called] Loading %v from slow storage, count %v\n", key, refCount)
+			return []byte(key), nil
+		})
+		return ret
+	}
+
+	getter := getGenerator()
+
+	g := NewGroup("G1", len("hello"+"world"), getter)
+	g.RegisterPeers(NewHTTPPool(19623))
+
+	testdata := []struct {
+		name          string
+		key           string
+		expectedCount int
+		err           error
+	}{
+		{"hello0", "hello", 1, nil},
+		{"hello1", "hello", 1, nil},
+		{"hello2", "hello", 1, nil},
+		{"hello3", "hello", 1, nil},
+		{"hello4", "hello", 1, nil},
+	}
+
+	wg := sync.WaitGroup{}
+	for _, d := range testdata {
+		d := d
+		wg.Add(1)
+		go func() {
+			log.Printf("test %v start", d.name)
+			ret, err := g.load(d.key)
+			if err != nil {
+				t.Error("unexpected error")
+			}
+			if refCount != d.expectedCount || !reflect.DeepEqual(ret.Get(), []byte(d.key)) {
+				t.Errorf("expecting incr'ed = %d / ret val = %s, got %d/%s", d.expectedCount, d.key, refCount, string(ret.Get()))
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
