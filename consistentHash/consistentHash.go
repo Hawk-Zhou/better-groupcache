@@ -130,7 +130,7 @@ func (ch *CHash) RemoveNode(name string) error {
 	for _, h := range vNodes {
 		err = ch.deleteVNode(h)
 		if err != nil {
-			log.Panicf("fatal error at RemoveNode: +%v", err.Error())
+			log.Panicf("fatal error at RemoveNode: %v", err.Error())
 		}
 	}
 	delete(ch.NameToSalt, name)
