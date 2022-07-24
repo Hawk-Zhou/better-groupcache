@@ -78,6 +78,7 @@ func (g *Group) Get(key string) (ByteView, error) {
 		ret, err := g.load(key)
 		if err != nil {
 			log.Println("[Group.Get] can't get key after miss:", err.Error())
+			return ret, err
 		}
 		return ret, err
 	}
@@ -97,6 +98,7 @@ func (g *Group) load(key string) (value ByteView, err error) {
 		ret, err := g.getFromPeers(pGetter, key)
 		if err != nil {
 			log.Printf("[Group.load] Failed to get from peers: %v", err)
+			return ret, err
 		}
 		return ret, err
 	}
