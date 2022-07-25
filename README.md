@@ -2,13 +2,21 @@
 
 [![codecov](https://codecov.io/gh/Hawk-Zhou/better-groupcache/branch/main/graph/badge.svg?token=ASAM33FCEM)](https://codecov.io/gh/Hawk-Zhou/better-groupcache)  
 
-## What is this
+## What is This
 
 This is my imitation of [groupcache](https://github.com/golang/groupcache), under the instruction of an educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements (not necessarily) on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
 
-## I didn't do this...
+## For the Record
 
-Before boasting about my improvements, for honesty, I have to acknowledge the fact that there's no statistics such as numbers of hits and numbers of errors collected. Collection of such statistics is implemented by groupcache. There are maybe more functions I didn't implement but I guess there won't be many.
+Before boasting about my improvements, for honesty, I have to acknowledge the some facts.  
+
+I am grateful for the tutorial and groupcache. I learnt a lot from them. My claimed improvements are just based on my speculation and are conjectures. I tried to give my analysis and reasons. Consider my improvements as a student's attempt to do a homework.
+
+This is not a 100% implementation of groupcache. For example, it lacks statistics collection function.  
+
+I copied one test (named gee_test) from geecache to supplement my tests for lru-k. There are also other code segments that may bear similarity with geecache because I followed the geecache tutorial and referred to it a lot during my coding process. In no ways I am advertising the originality of such segments. No line in the repo is written with no knowledge of what it is doing. I may forget what it is doing later but right now I know clearly how it works. 
+
+To elaborate again and conclude, this is just an imitative implementation, with modification and improvements, that aims to facilitate my go programming skills.
 
 ## Major Improvements
 
