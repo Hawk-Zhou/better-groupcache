@@ -16,9 +16,9 @@ The underlying cache method used by the two previous cache projects is **LRU**. 
 
 > For better or worse, this is original.
 
-Both geecache and groupcache implements *singleflight* that holds all but one calls to a function with the same key to uniquely identify these calls. After the one allowed call returns, the held calls are all released and share the same return values with the allowed one.
+Both geecache and groupcache implements *singleflight* that holds all but one calls to a function with the same key to uniquely identify these calls. After the one allowed call returns, the held calls all return and share the same return values with the allowed one.
 
-The problem is that, what if the function call panics. As shown below, if the call panics, the waiting group of this call will never done. The panic will cause the total failure of the cache. If the goroutine catches it, there's still goroutine leak (and also memory leak of not deleted calls in the map) because its peer calls are waiting for the wait group. This behavior is verified in `singleflight/singleflight_wo_recover/sfwor.go`.
+The problem is that, what if the function call panics. As shown below, if the call panics, the held calls will never end waiting the call because the panicked call exits before it calls `c.wg.Done()`. The panic will cause the total failure of the cache. If the goroutine catches it, there's still goroutine leak (and also memory leak of not deleted calls in the map) because its peer calls are waiting for the wait group. This behavior is verified in `singleflight/singleflight_wo_recover/sfwor.go`.
 
 ```go
 // groupcache's implementation
