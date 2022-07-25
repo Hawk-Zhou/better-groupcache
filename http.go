@@ -1,15 +1,23 @@
 package geecache
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"geecache/consistentHash"
+	pb "geecache/geecachepb"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
+
+type httpCtxKey string
 
 const defaultBasePath = "/geecache/"
 
@@ -23,9 +31,23 @@ type HTTPGetter struct {
 }
 
 func (hg *HTTPGetter) Get(group string, key string) ([]byte, error) {
-	url := fmt.Sprintf(hg.baseURL+"%v/%v", group, key)
 
-	resp, err := sharedClient.Get(url)
+	requestPb := &pb.Request{}
+	requestPb.Type = pb.Request_ISQUERY
+	queryPb := &pb.Request_Query{Group: group, Key: key}
+	requestPb.Body = &pb.Request_Query_{Query: queryPb}
+
+	// url := fmt.Sprintf(hg.baseURL+"%v/%v", group, key)
+
+	marshalledReq, err := proto.Marshal(requestPb)
+
+	if err != nil {
+		return nil, fmt.Errorf("http.Get can't marshal: %w", err)
+	}
+
+	resp, err := sharedClient.Post(hg.baseURL,
+		"application/octet-stream",
+		bytes.NewReader(marshalledReq))
 	if err != nil {
 		return nil, err
 	}
@@ -66,31 +88,21 @@ func NewHTTPPool(port int) *HTTPPool {
 	}
 }
 
-func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if !strings.HasPrefix(path, p.basePath) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("bad Pathname: %v \n", path)))
-		return
-	}
-	params := strings.SplitN(path[len(p.basePath):], "/", 3)
-	if len(params) != 2 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("wrong number of parameter (group/key)\n"))
-		return
-	} else if params[0] == "" || params[1] == "" {
+func (p *HTTPPool) answerQuery(group string, key string, w http.ResponseWriter, r *http.Request) {
+
+	if group == "" || key == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("group name / key should be not null\n"))
 		return
 	}
-	// log.Printf("[HTTPPool/ServeHttp] trying to access %s:%s", params[0], params[1])
-	g, ok := GetGroup(params[0])
+
+	g, ok := GetGroup(group)
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("group name doesn't exist\n"))
 		return
 	}
-	ret, err := g.Get(params[1])
+	ret, err := g.Get(key)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error() + "\n"))
@@ -98,6 +110,41 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(ret.Get())
+}
+
+func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	if !strings.HasPrefix(path, p.basePath) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("bad Pathname: %v \n", path)))
+		return
+	}
+
+	reqBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[http.ServeHTTP] unexpected error: %v\n", err)
+		return
+	}
+	requestPb := &pb.Request{}
+	err = proto.Unmarshal(reqBytes, requestPb)
+	if err != nil {
+		log.Printf("[http.ServeHTTP] can't unmarshal: %v\n", err)
+		return
+	}
+
+	reqTypePb := requestPb.GetType()
+	if reqTypePb == pb.Request_ISQUERY {
+		query := requestPb.GetQuery()
+		if query == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("bad pb.query (got nil after unmarshal): %v \n", path)))
+			return
+		}
+		log.Printf("got query %+v,%+v\n", query.Group, query.Key)
+		p.answerQuery(query.Group, query.Key, w, r)
+		return
+	}
 }
 
 func (p *HTTPPool) NewServer() *http.Server {
@@ -155,6 +202,7 @@ func (p *HTTPPool) RemovePeers(peers ...string) error {
 	defer p.mu.Unlock()
 
 	for _, peer := range peers {
+		// errs if not exist
 		err := p.peers.RemoveNode(peer)
 
 		if err != nil {

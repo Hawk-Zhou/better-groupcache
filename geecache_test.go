@@ -91,7 +91,7 @@ func TestGetFromRemotePool(t *testing.T) {
 	}()
 
 	// server can't setup in less than 800ms
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 
 	localGroup.AddPeers("http://0.0.0.0:4971/geecache/")
 	localPool.RemovePeers("http://" + localPool.host + localPool.basePath)

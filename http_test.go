@@ -33,7 +33,7 @@ func testGet(url string) (bodyText string, code int, err error) {
 	return bodyText, rep.StatusCode, err
 }
 
-func TestServer(t *testing.T) {
+func TestServerAbnormalRequest(t *testing.T) {
 	println("the following groups exist")
 
 	for key := range groups {
@@ -71,14 +71,6 @@ func TestServer(t *testing.T) {
 		{"////", false, 0},
 		{"/g1/", false, 0},
 		{"//asd", false, 0},
-		{"/g2/x", false, 0},
-		{"/g1/asdf", true, 1},
-		{"/g1/asdf", true, 1},
-		// size = maxBytes, evict asdf
-		{"/g1/12345", true, 2},
-		{"/g1/asdf", true, 3},
-		// callback is called, but result can't be cached, exceed maxBytes
-		{"/g1/123456", false, 4},
 	}
 
 	for _, d := range data {
@@ -155,7 +147,7 @@ func TestHTTPGetter_Get(t *testing.T) {
 		wantErr      bool
 		wantCallback bool
 	}{
-		{"notexist", "123", true, false},
+		{"notExist", "123", true, false},
 		{groupName, "1234", false, true},
 		{groupName, "1234", false, false},
 		{groupName, "19191", false, true},

@@ -6,8 +6,8 @@ option go_package = "/geecachepb/";
 
 message Request {
   enum RequestType {
-    QUERY = 0;
-    MANAGE = 1;
+    ISQUERY = 0;
+    ISMANAGE = 1;
   }
   message Query {
     string group = 1;
