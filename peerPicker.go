@@ -18,18 +18,3 @@ type PeerPicker interface {
 }
 
 var portPicker func(group string) PeerPicker
-
-func InitGroupAwarePicker(fn func(group string) PeerPicker) {
-	if portPicker != nil {
-		panic("trying to init portPicker twice at InitGroupAwarePicker")
-	}
-	portPicker = fn
-}
-
-func InitHeterogeneousPicker(fn func() PeerPicker) {
-	if portPicker != nil {
-		panic("trying to init portPicker twice at InitHeterogeneousPicker")
-	}
-
-	portPicker = func(_ string) PeerPicker { return fn() }
-}
