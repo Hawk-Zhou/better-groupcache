@@ -149,6 +149,9 @@ func (p *HTTPPool) answerQuery(group string, key string, w http.ResponseWriter, 
 	w.Write(ret.Get())
 }
 
+// answerMgtPurgePeers remove peers on request
+// It returns 200 if all removal are successful
+// If any fails, it returns InternalSeverError and a list of nodes failed to remove in the body
 func (p *HTTPPool) answerMgtPurgePeers(peers []string, w http.ResponseWriter, r *http.Request) {
 	var (
 		total      = len(peers)
