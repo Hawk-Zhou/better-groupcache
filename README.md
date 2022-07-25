@@ -6,7 +6,7 @@ This is my implementation of [geecache](https://geektutu.com/post/geecache.html)
 
 ## I didn't do this...
 
-Before boasting about my improvements, for honesty, I have to acknowledge the fact that I didn't use protobuf, which is used in both geecache and groupcache. The reason is that, after I learnt the geecache tutorial and the protobuf [document](https://developers.google.com/protocol-buffers/docs/encoding), I found that no special encoding (that is, like *varint* that saves space) is used to encode bytes or strings. In addition, there's no heavy marshalling or unmarshalling involved. Therefore, in my humblest opinion, sending bytes wrapped in protobuf instead of directly sending all the bytes in the body of a response (for a request, that is url vs. strings wrapped in protobuf) won't make a huge difference.
+Before boasting about my improvements, for honesty, I have to acknowledge the fact that there's no statistics such as numbers of hits and numbers of errors collected. Such statistics are implemented by groupcache. There are maybe more functions I didn't implement but I guess there won't be many.
 
 ## Major Improvements
 
@@ -105,6 +105,8 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (ret interface{},
 > An $O(n)$ implementation is given by [man-fish](https://github.com/man-fish) in the comments below the day4 tutorial.
 
 Both geecache and groupcache don't support delete of nodes. Moreover, they store the hashed key that represent virtual nodes in an array of `uint32`. The array gives rise to the complexity of $O(log\ n)$ in time to find the key to be deleted and $O(n)$ in time to remove that. $O(n)$ is okay but we can do better with balanced binary search trees. I used the [BTree](https://pkg.go.dev/github.com/google/btree) implementation by google to **achieve delete in $O(log\ n)$ time** . Thanks, Google.
+
+Btw, this support of delete/add nodes in real time is provided at upper layers like HTTPPool. The support at HTTPPool enables instructions of adding/removing nodes in the form of protobuf to be sent/received.
 
 ### A new problem (and its solution) with deleting nodes
 
