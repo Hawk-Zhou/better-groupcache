@@ -1,5 +1,6 @@
 # better-groupcache
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/Hawk-Zhou/better-groupcache)](https://goreportcard.com/report/github.com/Hawk-Zhou/better-groupcache)
 [![codecov](https://codecov.io/gh/Hawk-Zhou/better-groupcache/branch/main/graph/badge.svg?token=ASAM33FCEM)](https://codecov.io/gh/Hawk-Zhou/better-groupcache)  
 
 ## What is This
