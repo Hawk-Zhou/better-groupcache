@@ -4,7 +4,7 @@
 
 ## What is this
 
-This is my implementation of [geecache](https://geektutu.com/post/geecache.html), an educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements (not necessarily) on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
+This is my imitation of [groupcache](https://github.com/golang/groupcache), under the instruction of an educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements (not necessarily) on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
 
 ## I didn't do this...
 
