@@ -23,15 +23,21 @@ jobs:
         
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: actions/checkout@v3
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/setup-go@v3
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
           go-version: "1.18"
 
       # Runs a single command using the runners shell
-      - name: go test
-        env:
-          GO: "1.18"
-        run: |
-          ls -l
-          go test ./...
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -tags testrace -cover -coverprofile=coverage.txt
+        
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          file: ./coverage.txt
