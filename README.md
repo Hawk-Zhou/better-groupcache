@@ -12,6 +12,88 @@ This is my implementation of [geecache](https://geektutu.com/post/geecache.html)
 
 The underlying cache method used by the two previous cache projects is **LRU**. A problem with LRU is that sporadic read/write could evict frequently accessed data because only one access is needed to load the data into cache (and evicts other data). **LRU-K** , which require K accesses to accommodate the data into cache, is a solution to the problem. I wrapped the original LRU with an FIFO queue that **implements LRU-2** while keeping the interfaces the same.
 
+### More robust singleflight
+
+Both geecache and groupcache implements *singleflight* that holds all but one calls to a function with the same key to uniquely identify these calls. After the one allowed call returns, the held calls are all released and share the same return values with the allowed one.
+
+The problem is that, what if the function call panics. As shown below, if the call panics, the waiting group of this call will never done. The panic will cause the total failure of the cache. If the goroutine catches it, there's still goroutine leak (and also memory leak of not deleted calls in the map) because its peer calls are waiting for the wait group. This behavior is verified in `singleflight/singleflight_wo_recover/sfwor.go`.
+
+```go
+// groupcache's implementation
+func (g *Group) Do(key string, fn func() (interface{}, error)) (interface{}, error) {
+	g.mu.Lock()
+	if g.m == nil {
+		g.m = make(map[string]*call)
+	}
+	if c, ok := g.m[key]; ok {
+		g.mu.Unlock()
+		c.wg.Wait()
+		return c.val, c.err
+	}
+	c := new(call)
+	c.wg.Add(1)
+	g.m[key] = c
+	g.mu.Unlock()
+
+	c.val, c.err = fn()
+	c.wg.Done()
+
+	g.mu.Lock()
+	delete(g.m, key)
+	g.mu.Unlock()
+
+	return c.val, c.err
+}
+```
+
+My implementation of singleflight handles panic on its own and gives all calls an error to indicate the panic happens and is handled. It's tested with a case in which a call deliberately panics after a short period of time and many goroutines make the call concurrently.
+
+```go
+// my implementation
+func (g *Group) Do(key string, fn func() (interface{}, error)) (ret interface{}, retErr error) {
+	g.mu.Lock()
+
+	if g.m == nil {
+		g.m = make(map[string]*call)
+	}
+
+	c, ok := g.m[key]
+
+	// the call is duplicated
+	if ok {
+		g.mu.Unlock() // release lock
+		log.Printf("[singleflight.Do] Blocked dup %s", key)
+		c.wg.Wait()
+		return c.ret, c.err
+	}
+
+	// this is a new call
+	log.Printf("[singleflight.Do] Creating new call %s", key)
+	c = new(call)
+	c.wg.Add(1)
+	g.m[key] = c
+	g.mu.Unlock()
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("[singleflight.Do] Recovered from panic:", r)
+			c.err = fmt.Errorf("call panicked and recovered in single flight: %s", r)
+			c.wg.Done() // give clearance to all other Do()s waiting on this
+			retErr = c.err
+		}
+		g.Forget(key) // this call removes the call from the map
+		log.Printf("[singleflight.Do] Cleaning up call %s", key)
+	}()
+
+	log.Printf("[singleflight.Do] Doing new call %s", key)
+	c.ret, c.err = fn()
+	c.wg.Done()
+
+	return c.ret, c.err
+}
+```
+
+
 ### Delete of virtual nodes in consistent hash
 
 > An $O(n)$ implementation is given by [man-fish](https://github.com/man-fish) in the comments below the day4 tutorial.
@@ -20,7 +102,7 @@ Both geecache and groupcache don't support delete of nodes. Moreover, they store
 
 ### A new problem (and its solution) with deleting nodes
 
-> For better or worse, this is finally original. I realize this when implementing the above delete function.
+> For better or worse, this is finally original. I realize the problem when implementing the above delete function.
 
 **Background**
 
@@ -47,9 +129,9 @@ If we begin to delete nodes, such collision will lead to inconsistency and under
 
 **Solution**
 
-The solution I proposed is very primitive and brutal. We append a random salt value of one byte to the name being hashed and store it (later I realized that this is a bad idea). If there's still a collision, another salt is rolled. This process is allowed to try 10 salts before it gives up. I did some bad calculation. Assuming that a million nodes have been replicated at a factor of five and the possibility of hashing to any value is equal, the possibility of having at least one collision in the five replicas can be calculated as follows.  
+The solution I proposed is very primitive and brutal. We append a random salt value of one byte to the name being hashed and store it (later I found that randomness is a bad idea). If there's still a collision, another salt is rolled. This process is allowed to try 10 salts before it gives up. I did some coarse calculation. Assuming that a million virtual nodes have been spawned, the replica factor is five and the possibility of hashing to any value is equal, the possibility of having at least one collision in a spawning five new replicas can be roughly approximated (the probability is "picking while not putting back") as follows.  
 $\text{P} = 1-\text{P(No collision)} = 1-(\frac{2^{32}-1,000,000}{2^{32}})^5=0.9988$  
-We are rolling this ten times in a row so this shouldn't lead to any problem.
+We are rolling this ten times in a row so this shouldn't cause any problem.
 
 **Limitation**
 
