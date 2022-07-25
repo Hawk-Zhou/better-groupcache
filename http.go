@@ -88,6 +88,43 @@ func NewHTTPPool(port int) *HTTPPool {
 	}
 }
 
+// signal a remote peer to remove its peers
+func (p *HTTPPool) removePeerRemote(remoteURL string, peers ...string) error {
+	requestPb := &pb.Request{}
+	requestPb.Type = pb.Request_ISMANAGE
+	managePb := &pb.Request_Manage{Op: pb.Request_Manage_PURGE, Node: peers}
+	requestPb.Body = &pb.Request_Manage_{Manage: managePb}
+
+	// url := fmt.Sprintf(hg.baseURL+"%v/%v", group, key)
+
+	marshalledReq, err := proto.Marshal(requestPb)
+
+	if err != nil {
+		return fmt.Errorf("http.Get can't marshal: %w", err)
+	}
+
+	resp, err := sharedClient.Post(remoteURL,
+		"application/octet-stream",
+		bytes.NewReader(marshalledReq))
+	if err != nil {
+		return err
+	}
+	// otherwise memory will leak
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		if err != nil {
+			return fmt.Errorf("another error happened when handling statusCode(%v) from response:%w",
+				resp.StatusCode,
+				err)
+		}
+		return errors.New(resp.Status + ": " + string(body))
+	}
+
+	return nil
+}
+
 func (p *HTTPPool) answerQuery(group string, key string, w http.ResponseWriter, r *http.Request) {
 
 	if group == "" || key == "" {
@@ -110,6 +147,37 @@ func (p *HTTPPool) answerQuery(group string, key string, w http.ResponseWriter, 
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(ret.Get())
+}
+
+func (p *HTTPPool) answerMgtPurgePeers(peers []string, w http.ResponseWriter, r *http.Request) {
+	var (
+		total      = len(peers)
+		success    = 0
+		fail       = 0
+		failedtoRm = make([]string, 0, total)
+		err        error
+	)
+
+	for _, peer := range peers {
+		err = p.RemovePeers(peer)
+		if err != nil {
+			failedtoRm = append(failedtoRm, peer+":"+err.Error())
+			fail++
+		} else {
+			success++
+		}
+	}
+
+	if fail > 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		builder := strings.Builder{}
+		builder.WriteString(fmt.Sprintf("%d/%d nodes deleted, the rest failed\n", success, total))
+		builder.WriteString(strings.Join(failedtoRm, "\n"))
+		builder.WriteRune('\n')
+		w.Write([]byte(builder.String()))
+		return
+	}
+	w.WriteHeader(200)
 }
 
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -138,12 +206,25 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query := requestPb.GetQuery()
 		if query == nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("bad pb.query (got nil after unmarshal): %v \n", path)))
+			w.Write([]byte(fmt.Sprintf("bad request.query (got nil after unmarshal): %v \n", path)))
 			return
 		}
 		log.Printf("got query %+v,%+v\n", query.Group, query.Key)
 		p.answerQuery(query.Group, query.Key, w, r)
 		return
+	}
+
+	if reqTypePb == pb.Request_ISMANAGE {
+		manage := requestPb.GetManage()
+		if manage == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("bad request.manage (got nil after unmarshal): %v \n", path)))
+			return
+		}
+		log.Printf("got manage %+v,%+v\n", manage.Op, manage.Node)
+		if manage.Op == pb.Request_Manage_PURGE {
+			p.answerMgtPurgePeers(manage.Node, w, r)
+		}
 	}
 }
 

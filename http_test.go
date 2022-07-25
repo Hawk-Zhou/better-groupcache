@@ -231,3 +231,36 @@ func TestHTTPPool_PeerOp(t *testing.T) {
 		t.Errorf("can't get key properly from remote, ret,err,count are %v,%v,%v", string(ret), err, count)
 	}
 }
+
+func Test_remoteRemovePeers(t *testing.T) {
+	g := NewGroup("remoteMgtPurgePeers", 10, nil)
+	localPool := NewHTTPPool(4584)
+	g.RegisterPeers(localPool)
+
+	server := localPool.NewServer()
+	go server.ListenAndServe()
+	time.Sleep(time.Millisecond * 50)
+
+	peerAddr := "http://0.0.0.0:11451/geecache" // to be added and then removed
+	localPool.AddPeers(peerAddr)
+
+	_, ok := localPool.httpGetters[peerAddr]
+	if !ok {
+		t.Error("unexpected error, the node isn't added as peer")
+	}
+
+	err := localPool.removePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	_, ok = localPool.httpGetters[peerAddr]
+	if ok {
+		t.Error("unexpected error, the node isn't removed")
+	}
+
+	err = localPool.removePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
+	if err == nil {
+		t.Errorf("should err cuz removing nonexistent node")
+	}
+}
