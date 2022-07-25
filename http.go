@@ -18,8 +18,14 @@ import (
 )
 
 type httpCtxKey string
+type manageOp int
 
 const defaultBasePath = "/geecache/"
+
+const (
+	manage_PURGE = 0
+	manage_ADD   = 1
+)
 
 // sharedClient is http.Client that has timeout set properly
 var sharedClient = &http.Client{
@@ -89,18 +95,57 @@ func NewHTTPPool(port int) *HTTPPool {
 }
 
 // signal a remote peer to remove its peers
-func (p *HTTPPool) removePeerRemote(remoteURL string, peers ...string) error {
+func (p *HTTPPool) RemovePeerRemote(remoteURL string, peers ...string) error {
+	if len(peers) == 0 {
+		return errors.New("no peer to remove, check the parameter")
+	}
 	requestPb := &pb.Request{}
 	requestPb.Type = pb.Request_ISMANAGE
 	managePb := &pb.Request_Manage{Op: pb.Request_Manage_PURGE, Node: peers}
 	requestPb.Body = &pb.Request_Manage_{Manage: managePb}
 
-	// url := fmt.Sprintf(hg.baseURL+"%v/%v", group, key)
+	marshalledReq, err := proto.Marshal(requestPb)
+
+	if err != nil {
+		return fmt.Errorf("http.removePeerRemote can't marshal: %w", err)
+	}
+
+	resp, err := sharedClient.Post(remoteURL,
+		"application/octet-stream",
+		bytes.NewReader(marshalledReq))
+	if err != nil {
+		return err
+	}
+	// otherwise memory will leak
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		if err != nil {
+			return fmt.Errorf("another error happened when handling statusCode(%v) from response:%w",
+				resp.StatusCode,
+				err)
+		}
+		return errors.New(resp.Status + ": " + string(body))
+	}
+
+	return nil
+}
+
+// signal a remote peer to add a peer
+func (p *HTTPPool) AddPeerRemote(remoteURL string, peers ...string) error {
+	if len(peers) == 0 {
+		return errors.New("no peer to add, check the parameter")
+	}
+	requestPb := &pb.Request{}
+	requestPb.Type = pb.Request_ISMANAGE
+	managePb := &pb.Request_Manage{Op: pb.Request_Manage_ADD, Node: peers}
+	requestPb.Body = &pb.Request_Manage_{Manage: managePb}
 
 	marshalledReq, err := proto.Marshal(requestPb)
 
 	if err != nil {
-		return fmt.Errorf("http.Get can't marshal: %w", err)
+		return fmt.Errorf("http.addPeerRemote can't marshal: %w", err)
 	}
 
 	resp, err := sharedClient.Post(remoteURL,
@@ -149,22 +194,31 @@ func (p *HTTPPool) answerQuery(group string, key string, w http.ResponseWriter, 
 	w.Write(ret.Get())
 }
 
-// answerMgtPurgePeers remove peers on request
+// answerManage add/delete peers on request
 // It returns 200 if all removal are successful
-// If any fails, it returns InternalSeverError and a list of nodes failed to remove in the body
-func (p *HTTPPool) answerMgtPurgePeers(peers []string, w http.ResponseWriter, r *http.Request) {
+// If any fails, it returns InternalSeverError and a list of nodes failed to modify in the body
+func (p *HTTPPool) answerManage(op manageOp, peers []string, w http.ResponseWriter, r *http.Request) {
 	var (
-		total      = len(peers)
-		success    = 0
-		fail       = 0
-		failedtoRm = make([]string, 0, total)
-		err        error
+		total       = len(peers)
+		success     = 0
+		fail        = 0
+		failedtoMod = make([]string, 0, total)
+		err         error
 	)
 
+	var opFunc func(...string) error
+
+	switch op {
+	case manage_PURGE:
+		opFunc = p.RemovePeers
+	case manage_ADD:
+		opFunc = p.AddPeers
+	}
+
 	for _, peer := range peers {
-		err = p.RemovePeers(peer)
+		err = opFunc(peer)
 		if err != nil {
-			failedtoRm = append(failedtoRm, peer+":"+err.Error())
+			failedtoMod = append(failedtoMod, peer+":"+err.Error())
 			fail++
 		} else {
 			success++
@@ -174,8 +228,8 @@ func (p *HTTPPool) answerMgtPurgePeers(peers []string, w http.ResponseWriter, r 
 	if fail > 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		builder := strings.Builder{}
-		builder.WriteString(fmt.Sprintf("%d/%d nodes deleted, the rest failed\n", success, total))
-		builder.WriteString(strings.Join(failedtoRm, "\n"))
+		builder.WriteString(fmt.Sprintf("%d/%d nodes modified, the rest failed\n", success, total))
+		builder.WriteString(strings.Join(failedtoMod, "\n"))
 		builder.WriteRune('\n')
 		w.Write([]byte(builder.String()))
 		return
@@ -224,10 +278,15 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("bad request.manage (got nil after unmarshal): %v \n", path)))
 			return
 		}
-		log.Printf("got manage %+v,%+v\n", manage.Op, manage.Node)
-		if manage.Op == pb.Request_Manage_PURGE {
-			p.answerMgtPurgePeers(manage.Node, w, r)
+		var op manageOp
+		switch manage.Op {
+		case pb.Request_Manage_PURGE:
+			op = manage_PURGE
+		case pb.Request_Manage_ADD:
+			op = manage_ADD
 		}
+		p.answerManage(op, manage.Node, w, r)
+		return
 	}
 }
 
@@ -251,7 +310,7 @@ func newHttpServer(addr string, handler http.Handler) *http.Server {
 // AddPeers set peers of this format:
 //  "http://0.0.0.0:8000/geecache/"
 // * also register itself automatically
-// * idempotent operation
+// * idempotent operation (ignores duplicated add)
 func (p *HTTPPool) AddPeers(peers ...string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()

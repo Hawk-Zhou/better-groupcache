@@ -232,7 +232,7 @@ func TestHTTPPool_PeerOp(t *testing.T) {
 	}
 }
 
-func Test_remoteRemovePeers(t *testing.T) {
+func Test_remoteManagePeers(t *testing.T) {
 	g := NewGroup("remoteMgtPurgePeers", 10, nil)
 	localPool := NewHTTPPool(4584)
 	g.RegisterPeers(localPool)
@@ -242,25 +242,55 @@ func Test_remoteRemovePeers(t *testing.T) {
 	time.Sleep(time.Millisecond * 50)
 
 	peerAddr := "http://0.0.0.0:11451/geecache" // to be added and then removed
+	// add peer
 	localPool.AddPeers(peerAddr)
 
+	// check peer is added
 	_, ok := localPool.httpGetters[peerAddr]
 	if !ok {
 		t.Error("unexpected error, the node isn't added as peer")
 	}
 
-	err := localPool.removePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
+	// remotely instruct removal of the peer
+	err := localPool.RemovePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
+	// check remote removal success
 	_, ok = localPool.httpGetters[peerAddr]
 	if ok {
 		t.Error("unexpected error, the node isn't removed")
 	}
 
-	err = localPool.removePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
+	// check error (remotely remove nonexistent node)
+	err = localPool.RemovePeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
 	if err == nil {
 		t.Errorf("should err cuz removing nonexistent node")
+	}
+
+	// check peer is not there before remotely add
+	_, ok = localPool.httpGetters[peerAddr]
+	if ok {
+		t.Error("unexpected error, the node shouldn't be there")
+	}
+
+	// remotely add
+	err = localPool.AddPeerRemote("http://"+localPool.host+localPool.basePath, peerAddr)
+	if err != nil {
+		t.Error("unexpected error, remotely add peer failed")
+		println(err.Error())
+	}
+
+	// check peer is there after remotely add
+	_, ok = localPool.httpGetters[peerAddr]
+	if !ok {
+		t.Error("unexpected error, the node should be added")
+	}
+
+	// check wrong parameter refusal
+	if localPool.RemovePeerRemote("addr") == nil ||
+		localPool.AddPeerRemote("addr") == nil {
+		t.Error("should deny empty peer list")
 	}
 }
