@@ -2,7 +2,11 @@
 
 ## What is this
 
-This is my implementation of [geecache](https://geektutu.com/post/geecache.html), a educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). I am inventing the wheel again to practice go programming. 
+This is my implementation of [geecache](https://geektutu.com/post/geecache.html), a educational tutorial that implements [groupcache](https://github.com/golang/groupcache). My implementation includes improvements (not necessarily) on [geecache](https://geektutu.com/post/geecache.html) and even [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
+
+## I didn't do this...
+
+Before boasting about my improvements, for honesty, I have to acknowledge the fact that I didn't use protobuf, which is used in both geecache and groupcache. The reason is that, after I learnt the geecache tutorial and the protobuf [document](https://developers.google.com/protocol-buffers/docs/encoding), I found that no special encoding (that is, like *varint* that saves space) is used to encode bytes or strings. In addition, there's no heavy marshalling or unmarshalling involved. Therefore, in my humblest opinion, sending bytes wrapped in protobuf instead of directly sending all the bytes in the body of a response (for a request, that is url vs. strings wrapped in protobuf) won't make a huge difference.
 
 ## Major Improvements
 
@@ -16,9 +20,9 @@ The underlying cache method used by the two previous cache projects is **LRU**. 
 
 > For better or worse, this is original.
 
-Both geecache and groupcache implements *singleflight* that holds all but one calls to a function with the same key to uniquely identify these calls. After the one allowed call returns, the held calls are all released and share the same return values with the allowed one.
+Both geecache and groupcache implements *singleflight* that holds all but one calls to a function with the same key to uniquely identify these calls. After the one allowed call returns, the held calls all return and share the same return values with the allowed one.
 
-The problem is that, what if the function call panics. As shown below, if the call panics, the waiting group of this call will never done. The panic will cause the total failure of the cache. If the goroutine catches it, there's still goroutine leak (and also memory leak of not deleted calls in the map) because its peer calls are waiting for the wait group. This behavior is verified in `singleflight/singleflight_wo_recover/sfwor.go`.
+The problem is that, what if the function call panics. As shown below, if the call panics, the held calls will never end waiting the call because the panicked call exits before it calls `c.wg.Done()`. The panic will cause the total failure of the cache. If the goroutine catches it, there's still goroutine leak (and also memory leak of not deleted calls in the map) because its peer calls are waiting for the wait group. This behavior is verified in `singleflight/singleflight_wo_recover/sfwor.go`.
 
 ```go
 // groupcache's implementation
