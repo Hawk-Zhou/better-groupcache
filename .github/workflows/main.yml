@@ -33,5 +33,6 @@ jobs:
         env:
           GO: "1.18"
         run: |
+          echo ls -l
           go mod tidy
           go test ./...
