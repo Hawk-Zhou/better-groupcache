@@ -1,4 +1,4 @@
-module geecache
+module github.com/Hawk-Zhou/better-groupcache
 
 go 1.18
 
