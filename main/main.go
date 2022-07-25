@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"geecache"
 	"time"
+
+	geecache "github.com/Hawk-Zhou/better-groupcache"
 )
 
 // used in tests, start up by ./script.sh

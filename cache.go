@@ -1,8 +1,9 @@
 package geecache
 
 import (
-	"geecache/lru_k"
 	"sync"
+
+	"github.com/Hawk-Zhou/better-groupcache/lru_k"
 )
 
 // cache is a thread safe encapsulation of lru cache

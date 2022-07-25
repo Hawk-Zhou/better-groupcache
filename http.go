@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"geecache/consistentHash"
-	pb "geecache/geecachepb"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Hawk-Zhou/better-groupcache/consistentHash"
+	pb "github.com/Hawk-Zhou/better-groupcache/geecachepb"
 
 	"google.golang.org/protobuf/proto"
 )

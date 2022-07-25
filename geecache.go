@@ -2,10 +2,11 @@ package geecache
 
 import (
 	"errors"
-	"geecache/singleflight"
 	"log"
 	"math/rand"
 	"sync"
+
+	"github.com/Hawk-Zhou/better-groupcache/singleflight"
 )
 
 // function type is a pattern that allows more than struct
