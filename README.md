@@ -6,7 +6,7 @@ This is my implementation of [geecache](https://geektutu.com/post/geecache.html)
 
 ## I didn't do this...
 
-Before boasting about my improvements, for honesty, I have to acknowledge the fact that there's no statistics such as numbers of hits and numbers of errors collected. Such statistics are implemented by groupcache. There are maybe more functions I didn't implement but I guess there won't be many.
+Before boasting about my improvements, for honesty, I have to acknowledge the fact that there's no statistics such as numbers of hits and numbers of errors collected. Collection of such statistics is implemented by groupcache. There are maybe more functions I didn't implement but I guess there won't be many.
 
 ## Major Improvements
 
