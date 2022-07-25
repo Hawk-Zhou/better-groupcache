@@ -5,8 +5,29 @@ package geecachepb;
 option go_package = "/geecachepb/";
 
 message Request {
-  string group = 1;
-  string key = 2;
+  enum RequestType {
+    QUERY = 0;
+    MANAGE = 1;
+  }
+  message Query {
+    string group = 1;
+    string key = 2;
+  }
+
+  message Manage {
+    enum OpType {
+      PURGE = 0;
+      ADD = 1;
+    }
+    OpType op = 1;
+    repeated string node = 2;
+  }
+
+  RequestType type = 1;
+  oneof body {
+    Query query = 2;
+    Manage manage = 3;
+  }
 }
 
 message Response {

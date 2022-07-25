@@ -20,13 +20,108 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type Request_RequestType int32
+
+const (
+	Request_QUERY  Request_RequestType = 0
+	Request_MANAGE Request_RequestType = 1
+)
+
+// Enum value maps for Request_RequestType.
+var (
+	Request_RequestType_name = map[int32]string{
+		0: "QUERY",
+		1: "MANAGE",
+	}
+	Request_RequestType_value = map[string]int32{
+		"QUERY":  0,
+		"MANAGE": 1,
+	}
+)
+
+func (x Request_RequestType) Enum() *Request_RequestType {
+	p := new(Request_RequestType)
+	*p = x
+	return p
+}
+
+func (x Request_RequestType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Request_RequestType) Descriptor() protoreflect.EnumDescriptor {
+	return file_geecachepb_geecachepb_proto_enumTypes[0].Descriptor()
+}
+
+func (Request_RequestType) Type() protoreflect.EnumType {
+	return &file_geecachepb_geecachepb_proto_enumTypes[0]
+}
+
+func (x Request_RequestType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Request_RequestType.Descriptor instead.
+func (Request_RequestType) EnumDescriptor() ([]byte, []int) {
+	return file_geecachepb_geecachepb_proto_rawDescGZIP(), []int{0, 0}
+}
+
+type Request_Manage_OpType int32
+
+const (
+	Request_Manage_PURGE Request_Manage_OpType = 0
+	Request_Manage_ADD   Request_Manage_OpType = 1
+)
+
+// Enum value maps for Request_Manage_OpType.
+var (
+	Request_Manage_OpType_name = map[int32]string{
+		0: "PURGE",
+		1: "ADD",
+	}
+	Request_Manage_OpType_value = map[string]int32{
+		"PURGE": 0,
+		"ADD":   1,
+	}
+)
+
+func (x Request_Manage_OpType) Enum() *Request_Manage_OpType {
+	p := new(Request_Manage_OpType)
+	*p = x
+	return p
+}
+
+func (x Request_Manage_OpType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Request_Manage_OpType) Descriptor() protoreflect.EnumDescriptor {
+	return file_geecachepb_geecachepb_proto_enumTypes[1].Descriptor()
+}
+
+func (Request_Manage_OpType) Type() protoreflect.EnumType {
+	return &file_geecachepb_geecachepb_proto_enumTypes[1]
+}
+
+func (x Request_Manage_OpType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Request_Manage_OpType.Descriptor instead.
+func (Request_Manage_OpType) EnumDescriptor() ([]byte, []int) {
+	return file_geecachepb_geecachepb_proto_rawDescGZIP(), []int{0, 1, 0}
+}
+
 type Request struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
-	Key   string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Type Request_RequestType `protobuf:"varint,1,opt,name=type,proto3,enum=geecachepb.Request_RequestType" json:"type,omitempty"`
+	// Types that are assignable to Body:
+	//	*Request_Query_
+	//	*Request_Manage_
+	Body isRequest_Body `protobuf_oneof:"body"`
 }
 
 func (x *Request) Reset() {
@@ -61,19 +156,49 @@ func (*Request) Descriptor() ([]byte, []int) {
 	return file_geecachepb_geecachepb_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Request) GetGroup() string {
+func (x *Request) GetType() Request_RequestType {
 	if x != nil {
-		return x.Group
+		return x.Type
 	}
-	return ""
+	return Request_QUERY
 }
 
-func (x *Request) GetKey() string {
-	if x != nil {
-		return x.Key
+func (m *Request) GetBody() isRequest_Body {
+	if m != nil {
+		return m.Body
 	}
-	return ""
+	return nil
 }
+
+func (x *Request) GetQuery() *Request_Query {
+	if x, ok := x.GetBody().(*Request_Query_); ok {
+		return x.Query
+	}
+	return nil
+}
+
+func (x *Request) GetManage() *Request_Manage {
+	if x, ok := x.GetBody().(*Request_Manage_); ok {
+		return x.Manage
+	}
+	return nil
+}
+
+type isRequest_Body interface {
+	isRequest_Body()
+}
+
+type Request_Query_ struct {
+	Query *Request_Query `protobuf:"bytes,2,opt,name=query,proto3,oneof"`
+}
+
+type Request_Manage_ struct {
+	Manage *Request_Manage `protobuf:"bytes,3,opt,name=manage,proto3,oneof"`
+}
+
+func (*Request_Query_) isRequest_Body() {}
+
+func (*Request_Manage_) isRequest_Body() {}
 
 type Response struct {
 	state         protoimpl.MessageState
@@ -122,23 +247,153 @@ func (x *Response) GetValue() []byte {
 	return nil
 }
 
+type Request_Query struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	Key   string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *Request_Query) Reset() {
+	*x = Request_Query{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_geecachepb_geecachepb_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Request_Query) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Request_Query) ProtoMessage() {}
+
+func (x *Request_Query) ProtoReflect() protoreflect.Message {
+	mi := &file_geecachepb_geecachepb_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Request_Query.ProtoReflect.Descriptor instead.
+func (*Request_Query) Descriptor() ([]byte, []int) {
+	return file_geecachepb_geecachepb_proto_rawDescGZIP(), []int{0, 0}
+}
+
+func (x *Request_Query) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *Request_Query) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type Request_Manage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Op   Request_Manage_OpType `protobuf:"varint,1,opt,name=op,proto3,enum=geecachepb.Request_Manage_OpType" json:"op,omitempty"`
+	Node []string              `protobuf:"bytes,2,rep,name=node,proto3" json:"node,omitempty"`
+}
+
+func (x *Request_Manage) Reset() {
+	*x = Request_Manage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_geecachepb_geecachepb_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Request_Manage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Request_Manage) ProtoMessage() {}
+
+func (x *Request_Manage) ProtoReflect() protoreflect.Message {
+	mi := &file_geecachepb_geecachepb_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Request_Manage.ProtoReflect.Descriptor instead.
+func (*Request_Manage) Descriptor() ([]byte, []int) {
+	return file_geecachepb_geecachepb_proto_rawDescGZIP(), []int{0, 1}
+}
+
+func (x *Request_Manage) GetOp() Request_Manage_OpType {
+	if x != nil {
+		return x.Op
+	}
+	return Request_Manage_PURGE
+}
+
+func (x *Request_Manage) GetNode() []string {
+	if x != nil {
+		return x.Node
+	}
+	return nil
+}
+
 var File_geecachepb_geecachepb_proto protoreflect.FileDescriptor
 
 var file_geecachepb_geecachepb_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2f, 0x67, 0x65, 0x65,
 	0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0a, 0x67,
-	0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x22, 0x31, 0x0a, 0x07, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
-	0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x20, 0x0a, 0x08,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x32, 0x3e,
-	0x0a, 0x0a, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x43, 0x61, 0x63, 0x68, 0x65, 0x12, 0x30, 0x0a, 0x03,
-	0x47, 0x65, 0x74, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62,
-	0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x67, 0x65, 0x65, 0x63, 0x61,
-	0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x0e,
-	0x5a, 0x0c, 0x2f, 0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2f, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x22, 0xf5, 0x02, 0x0a, 0x07, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x33, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x1f, 0x2e, 0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62,
+	0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x31, 0x0a, 0x05, 0x71, 0x75,
+	0x65, 0x72, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x67, 0x65, 0x65, 0x63,
+	0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x51,
+	0x75, 0x65, 0x72, 0x79, 0x48, 0x00, 0x52, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x34, 0x0a,
+	0x06, 0x6d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e,
+	0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x2e, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x48, 0x00, 0x52, 0x06, 0x6d, 0x61, 0x6e,
+	0x61, 0x67, 0x65, 0x1a, 0x2f, 0x0a, 0x05, 0x51, 0x75, 0x65, 0x72, 0x79, 0x12, 0x14, 0x0a, 0x05,
+	0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f,
+	0x75, 0x70, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x1a, 0x6d, 0x0a, 0x06, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x12, 0x31,
+	0x0a, 0x02, 0x6f, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x21, 0x2e, 0x67, 0x65, 0x65,
+	0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e,
+	0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x2e, 0x4f, 0x70, 0x54, 0x79, 0x70, 0x65, 0x52, 0x02, 0x6f,
+	0x70, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x6f, 0x64, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52,
+	0x04, 0x6e, 0x6f, 0x64, 0x65, 0x22, 0x1c, 0x0a, 0x06, 0x4f, 0x70, 0x54, 0x79, 0x70, 0x65, 0x12,
+	0x09, 0x0a, 0x05, 0x50, 0x55, 0x52, 0x47, 0x45, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x41, 0x44,
+	0x44, 0x10, 0x01, 0x22, 0x24, 0x0a, 0x0b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x51, 0x55, 0x45, 0x52, 0x59, 0x10, 0x00, 0x12, 0x0a, 0x0a,
+	0x06, 0x4d, 0x41, 0x4e, 0x41, 0x47, 0x45, 0x10, 0x01, 0x42, 0x06, 0x0a, 0x04, 0x62, 0x6f, 0x64,
+	0x79, 0x22, 0x20, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x32, 0x3e, 0x0a, 0x0a, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x43, 0x61, 0x63, 0x68,
+	0x65, 0x12, 0x30, 0x0a, 0x03, 0x47, 0x65, 0x74, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x65, 0x63, 0x61,
+	0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e,
+	0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x42, 0x0e, 0x5a, 0x0c, 0x2f, 0x67, 0x65, 0x65, 0x63, 0x61, 0x63, 0x68, 0x65,
+	0x70, 0x62, 0x2f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -153,19 +408,28 @@ func file_geecachepb_geecachepb_proto_rawDescGZIP() []byte {
 	return file_geecachepb_geecachepb_proto_rawDescData
 }
 
-var file_geecachepb_geecachepb_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_geecachepb_geecachepb_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_geecachepb_geecachepb_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_geecachepb_geecachepb_proto_goTypes = []interface{}{
-	(*Request)(nil),  // 0: geecachepb.Request
-	(*Response)(nil), // 1: geecachepb.Response
+	(Request_RequestType)(0),   // 0: geecachepb.Request.RequestType
+	(Request_Manage_OpType)(0), // 1: geecachepb.Request.Manage.OpType
+	(*Request)(nil),            // 2: geecachepb.Request
+	(*Response)(nil),           // 3: geecachepb.Response
+	(*Request_Query)(nil),      // 4: geecachepb.Request.Query
+	(*Request_Manage)(nil),     // 5: geecachepb.Request.Manage
 }
 var file_geecachepb_geecachepb_proto_depIdxs = []int32{
-	0, // 0: geecachepb.GroupCache.Get:input_type -> geecachepb.Request
-	1, // 1: geecachepb.GroupCache.Get:output_type -> geecachepb.Response
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: geecachepb.Request.type:type_name -> geecachepb.Request.RequestType
+	4, // 1: geecachepb.Request.query:type_name -> geecachepb.Request.Query
+	5, // 2: geecachepb.Request.manage:type_name -> geecachepb.Request.Manage
+	1, // 3: geecachepb.Request.Manage.op:type_name -> geecachepb.Request.Manage.OpType
+	2, // 4: geecachepb.GroupCache.Get:input_type -> geecachepb.Request
+	3, // 5: geecachepb.GroupCache.Get:output_type -> geecachepb.Response
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_geecachepb_geecachepb_proto_init() }
@@ -198,19 +462,48 @@ func file_geecachepb_geecachepb_proto_init() {
 				return nil
 			}
 		}
+		file_geecachepb_geecachepb_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Request_Query); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_geecachepb_geecachepb_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Request_Manage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+	}
+	file_geecachepb_geecachepb_proto_msgTypes[0].OneofWrappers = []interface{}{
+		(*Request_Query_)(nil),
+		(*Request_Manage_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_geecachepb_geecachepb_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_geecachepb_geecachepb_proto_goTypes,
 		DependencyIndexes: file_geecachepb_geecachepb_proto_depIdxs,
+		EnumInfos:         file_geecachepb_geecachepb_proto_enumTypes,
 		MessageInfos:      file_geecachepb_geecachepb_proto_msgTypes,
 	}.Build()
 	File_geecachepb_geecachepb_proto = out.File
