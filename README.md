@@ -169,5 +169,5 @@ A: It could do both. Every group has its own peer picker field and the peer pick
 
 > my review, more explanation: If a query missed and shall consult the callback function to load data into cache, we can but should not write to a channel in the callback function and try to read (or just let the write block till time out and raise an error) the channel in the test logic to determine whether this miss should happen. This is just pointless.  
 
-For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.
+For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.  
 4. `var _ interfaceT = (* concreteT)(nil)` validates if a concrete type implements an interface by converting a `nil pointer` to `pointer to interfaceT`.
