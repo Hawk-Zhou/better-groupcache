@@ -154,7 +154,7 @@ We are rolling this ten times in a row so this shouldn't cause any problem.
 
 **Limitation**
 
-Roll the dice is a bad behavior given that we can just try from 0 to 255 in a ordered manner. I was kind of confused by the idea of "salt" and chose to generate it with randomly. Luckily this can be corrected, the maximum allowed retries for a new salt value can be configured and the salt comes from a function, which can also be easily replaced by a for loop.
+Rolling the dice is a bad behavior given that we can just try from 0 to 255 in a ordered manner. I was kind of confused by the idea of "salt" and chose to generate it with randomly. Luckily this can be corrected, the maximum allowed retries for a new salt value can be configured and the salt comes from a function, which can also be easily replaced by a for loop.
 
 ## My Q and My A
 
@@ -165,9 +165,5 @@ A: It could do both. Every group has its own peer picker field and the peer pick
 ## Lessons Learnt
 1. It is helpful for testing to call a callback function when a black box system is conducting a operation that happens occasionally (like evicting cache entires).
 2. Unit tests back refactoring and serve as regression tests.
-3. Don't fiddle with coroutines when testing, especially when testing something that also involves concurrency.  
-
-> my review, more explanation: If a query missed and shall consult the callback function to load data into cache, we can but should not write to a channel in the callback function and try to read (or just let the write block till time out and raise an error) the channel in the test logic to determine whether this miss should happen. This is just pointless.  
-
-For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.  
+3. Don't fiddle with coroutines when testing, especially when testing something that also involves concurrency. More explanation: If a query missed and shall consult the callback function to load data into cache, we can but should not write to a channel in the callback function and try to read (or just let the write block till time out and raise an error) the channel in the test logic to determine whether this miss should happen. This is just pointless. Instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.  
 4. `var _ interfaceT = (* concreteT)(nil)` validates if a concrete type implements an interface by converting a `nil pointer` to `pointer to interfaceT`.
