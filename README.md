@@ -165,6 +165,9 @@ A: It could do both. Every group has its own peer picker field and the peer pick
 ## Lessons Learnt
 1. It is helpful for testing to call a callback function when a black box system is conducting a operation that happens occasionally (like evicting cache entires).
 2. Unit tests back refactoring and serve as regression tests.
-3. Don't fiddle with coroutines when testing, especially when testing something that also involves concurrency.
-	For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.
+3. Don't fiddle with coroutines when testing, especially when testing something that also involves concurrency.  
+
+> my review, more explanation: If a query missed and shall consult the callback function to load data into cache, we can but should not write to a channel in the callback function and try to read (or just let the write block till time out and raise an error) the channel in the test logic to determine whether this miss should happen. This is just pointless.  
+
+For example, instead of feeding a token to a channel to enable a select case in a callback function, why not just let the callback function add to a counter and check its value.
 4. `var _ interfaceT = (* concreteT)(nil)` validates if a concrete type implements an interface by converting a `nil pointer` to `pointer to interfaceT`.
