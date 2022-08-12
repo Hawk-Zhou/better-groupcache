@@ -5,7 +5,7 @@
 
 ## What is This
 
-This is my imitation of [groupcache](https://github.com/golang/groupcache), under the instruction of an educational tutorial, [geecache](https://geektutu.com/post/geecache.html) that teaches how to implement groupcache. My implementation includes improvements (perhaps) on [geecache](https://geektutu.com/post/geecache.html) and [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
+This is my imitation of [groupcache](https://github.com/golang/groupcache), following the instruction of a tutorial, [geecache](https://geektutu.com/post/geecache.html), that teaches how to implement groupcache. My implementation includes improvements (perhaps) on [geecache](https://geektutu.com/post/geecache.html) and [groupcache](https://github.com/golang/groupcache). The purpose of this project is to practice go programming. 
 
 ## For the Record
 
