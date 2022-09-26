@@ -9,7 +9,7 @@ This is my imitation of [groupcache](https://github.com/golang/groupcache), foll
 
 ## For the Record
 
-Before boasting about my improvements, for honesty, I have to acknowledge the some facts.  
+Before boasting about my improvements, for honesty, I have to acknowledge some facts.  
 
 I am grateful for the tutorial and groupcache. I learnt a lot from them. My claimed improvements are just based on my speculation and are conjectures. I tried to give my analysis and reasons. Consider my improvements as a student's attempt to do a homework.  
 
