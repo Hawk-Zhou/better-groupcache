@@ -125,7 +125,7 @@ Btw, this support of delete/add nodes in real time is provided at upper layers l
 
 **Background**
 
-Hash collision becomes a problem in our implementation that comes with delete support. The OG [implementation](https://github.com/golang/groupcache/blob/master/consistenthash/consistenthash.go) of consistent hash by grouphash shown below doesn't care about collision, which is perfectly fine. 
+Hash collisio wasn't too much a problem in creating virtual nodes. It becomes a problem in my implementation because support of deleting nodes requires precise tracking of virtual nodes. The OG [implementation](https://github.com/golang/groupcache/blob/master/consistenthash/consistenthash.go) of consistent hash by grouphash shown below doesn't care about collision, which is perfectly fine. 
 
 ```go
 func (m *Map) Add(keys ...string) {
@@ -140,7 +140,7 @@ func (m *Map) Add(keys ...string) {
 }
 ```
 
-Even one virtual node is hashed to an existing key that represents another virtual node that belongs to some other physical node, we still have $(replicas - 1)$ nodes for that unfortune and deprived node. 
+Even one virtual node of many virtual nodes under the name of physical node X is hashed to an existing key that has been already allocated to another virtual node that belongs to some other physical node Y. The former physical node X still have $(replicas - 1)$ virtual nodes on the ring hash. 
 
 **Problem**
 
